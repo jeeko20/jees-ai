@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jee's AI</title>
+<style>
+:root{--bg:#fff;--side:#f9f9f9;--tx:#0d0d0d;--mut:#6b6b6b;--bd:#e5e5e5;--hov:#ececec;--usr:#f0f0f0;--acc:#0d0d0d;--accT:#fff;--code:#f6f6f6}
+:root[data-theme=dark]{--bg:#212121;--side:#171717;--tx:#ececec;--mut:#9b9b9b;--bd:#383838;--hov:#2a2a2a;--usr:#303030;--acc:#ececec;--accT:#171717;--code:#161616}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx);display:flex;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;border-radius:8px}
+button:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--mut);outline-offset:1px}
+#side{width:260px;background:var(--side);display:flex;flex-direction:column;padding:8px;flex-shrink:0;transition:margin .2s}
+#side.off{margin-left:-260px}
+.nb{display:flex;align-items:center;gap:8px;padding:10px;width:100%;text-align:left}
+.nb:hover,.ci:hover,.ci.on{background:var(--hov)}
+#list{flex:1;overflow:auto;margin-top:8px}
+.ci{display:flex;align-items:center;padding:8px 10px;gap:4px;cursor:pointer;border-radius:8px;font-size:14px}
+.ci span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci button{opacity:0;padding:2px 6px;color:var(--mut)}
+.ci:hover button{opacity:1}
+.gl{font-size:12px;color:var(--mut);padding:12px 10px 4px}
+#main{flex:1;display:flex;flex-direction:column;min-width:0;height:100%}
+header{display:flex;align-items:center;gap:8px;padding:8px 12px;height:52px}
+header b{font-weight:600}
+.sp{flex:1}
+.ib{padding:8px 10px}
+.ib:hover{background:var(--hov)}
+.on-i{background:var(--hov)}
+#msgs{flex:1;overflow:auto;padding:0 16px}
+.w{max-width:720px;margin:0 auto}
+.m{padding:14px 0;display:flex}
+.m.u{justify-content:flex-end}
+.m.u .b{background:var(--usr);padding:8px 16px;border-radius:20px;max-width:80%;white-space:pre-wrap;word-wrap:break-word}
+.m.a .b{width:100%;word-wrap:break-word;overflow-wrap:anywhere}
+.b p{margin:0 0 .8em}.b p:last-child{margin:0}
+.b pre{background:var(--code);border:1px solid var(--bd);border-radius:10px;padding:12px;overflow-x:auto;font-size:13.5px;position:relative}
+.b code{font-family:ui-monospace,Consolas,monospace;font-size:.9em}
+.b :not(pre)>code{background:var(--code);padding:2px 5px;border-radius:5px}
+.b ul,.b ol{padding-left:1.4em;margin:0 0 .8em}
+.b h1,.b h2,.b h3{margin:1em 0 .4em;line-height:1.3}
+.act{display:flex;gap:2px;margin-top:6px;color:var(--mut);font-size:13px}
+.act button{padding:4px 8px}.act button:hover{background:var(--hov)}
+.cur::after{content:"";display:inline-block;width:8px;height:8px;background:var(--tx);border-radius:50%;margin-left:4px;vertical-align:middle}
+.hero{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px}
+.hero h1{font-size:28px;font-weight:600;margin:0}
+.sug{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:620px}
+.sug button{border:1px solid var(--bd);padding:8px 14px;font-size:14px;border-radius:18px}
+.sug button:hover{background:var(--hov)}
+#comp{padding:8px 16px 12px}
+.box{max-width:720px;margin:0 auto;background:var(--usr);border-radius:26px;display:flex;align-items:flex-end;padding:8px 8px 8px 8px;gap:8px}
+textarea{flex:1;background:none;border:0;color:inherit;font:inherit;resize:none;max-height:200px;padding:6px 0;outline:0}
+#go{width:36px;height:36px;border-radius:50%;background:var(--acc);color:var(--accT);font-size:18px;flex-shrink:0}
+#go:disabled{opacity:.3;cursor:default}
+#att{max-width:720px;margin:0 auto 8px;display:flex;flex-wrap:wrap;gap:8px}
+#att:empty{display:none}
+.chip{display:flex;align-items:center;gap:6px;background:var(--usr);border:1px solid var(--bd);border-radius:12px;padding:4px 6px 4px 8px;font-size:13px;max-width:200px}
+.chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip img{width:32px;height:32px;object-fit:cover;border-radius:6px}
+.chip button{padding:0 6px;color:var(--mut)}
+.clip{width:36px;height:36px;font-size:18px;flex-shrink:0;border-radius:50%}
+.clip:hover{background:var(--hov)}
+.th{display:block;max-width:220px;max-height:220px;border-radius:10px;margin:0 0 6px}
+.fc{font-size:13px;color:var(--mut);margin-bottom:6px}
+.drop{outline:2px dashed var(--mut);outline-offset:-8px}
+.note{text-align:center;font-size:12px;color:var(--mut);padding-top:8px}
+.inc{background:var(--hov);text-align:center;font-size:13px;padding:6px;color:var(--mut)}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9;padding:16px}
+#ov.on{display:flex}
+.dlg{background:var(--bg);border:1px solid var(--bd);border-radius:16px;padding:20px;width:100%;max-width:460px;max-height:90vh;overflow:auto}
+.dlg h2{margin:0 0 12px;font-size:18px}
+.dlg label{display:block;font-size:14px;margin:12px 0 4px;color:var(--mut)}
+.dlg input,.dlg select,.dlg textarea{width:100%;background:var(--usr);border:1px solid var(--bd);border-radius:8px;padding:8px;color:inherit;font:inherit;font-size:14px}
+.dlg textarea{min-height:80px;resize:vertical;flex:none}
+.row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.row button{border:1px solid var(--bd);padding:8px 12px;font-size:14px}
+.row .pr{background:var(--acc);color:var(--accT);border-color:var(--acc)}
+.row .dg{color:#e5484d}
+@media(max-width:760px){#side{position:fixed;inset:0 auto 0 0;z-index:5;box-shadow:2px 0 12px rgba(0,0,0,.3)}#side.off{margin-left:-270px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<aside id="side">
+  <button class="nb" id="new">✏️ Nouvelle discussion</button>
+  <div id="list"></div>
+  <button class="nb" id="setb">⚙️ Paramètres</button>
+</aside>
+<div id="main">
+  <header>
+    <button class="ib" id="tog" aria-label="Menu">☰</button>
+    <b>Jee's AI</b>
+    <span class="sp"></span>
+    <button class="ib" id="inc" title="Mode incognito">🕶️ Incognito</button>
+    <button class="ib" id="thm" aria-label="Changer de thème">🌓</button>
+  </header>
+  <div class="inc" id="incb" hidden>Mode incognito : cette discussion ne sera pas enregistrée.</div>
+  <div id="msgs"><div class="w" id="wrap"></div></div>
+  <div id="comp">
+    <div id="att"></div>
+    <div class="box">
+      <button class="clip" id="clip" aria-label="Joindre un fichier" title="Joindre images, code, texte">📎</button>
+      <input type="file" id="file" multiple hidden accept="image/*,.txt,.md,.csv,.json,.js,.ts,.jsx,.tsx,.py,.html,.css,.xml,.yml,.yaml,.sql,.sh,.java,.c,.cpp,.go,.rs,.php,.log,.ini,.toml">
+      <textarea id="in" rows="1" placeholder="Écris ton message à Jee's AI…"></textarea>
+      <button id="go" aria-label="Envoyer">↑</button>
+    </div>
+    <div class="note">Jee's AI peut se tromper. Vérifie les informations importantes.</div>
+  </div>
+</div>
+
+<div id="ov"><div class="dlg">
+  <h2>Paramètres</h2>
+  <label for="s-th">Thème</label>
+  <select id="s-th"><option value="system">Système</option><option value="light">Clair</option><option value="dark">Sombre</option></select>
+  <label for="s-md">Modèle (laisser vide = celui du code)</label>
+  <input id="s-md" placeholder="ex : gpt-4o-mini">
+  <label for="s-sys">Instructions système</label>
+  <textarea id="s-sys"></textarea>
+  <label for="s-t">Température : <span id="tv"></span></label>
+  <input id="s-t" type="range" min="0" max="2" step="0.1">
+  <div class="row">
+    <button id="exp">Exporter l'historique</button>
+    <button id="clr" class="dg">Tout supprimer</button>
+  </div>
+  <div class="row"><button class="pr" id="ok">Enregistrer</button><button id="cx">Fermer</button></div>
+</div></div>
+
+<script>
+/* ============ CONFIGURATION : mets ton endpoint et ta clé ici ============ */
+const CONFIG = {
+  ENDPOINT: "https://wobble-smilingly-onward.ngrok-free.dev/v1/chat/completions", // Ollama (API type OpenAI) ou ton tunnel https
+  API_KEY:  "ollama",            // Ollama accepte n'importe quelle valeur ; mets ta vraie clé si besoin
+  MODEL:    "richardyoung/qwen2.5-14b-instruct-abliterated:latest"         // pour comprendre les images : "qwen2.5vl:7b"
+};
+/* ======================================================================== */
+
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d }catch{ return d } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
+};
+let chats = store.get('jk_chats', []);
+let S = Object.assign({theme:'system', system:'Tu es Jee\'s AI, un assistant utile et concis. Réponds dans la langue de l\'utilisateur.', temp:0.7, model:''}, store.get('jk_set', {}));
+let cur, incog = false, ctrl = null, busy = false, pending = [];
+const TXT = /\.(txt|md|csv|json|js|ts|jsx|tsx|py|html|css|xml|ya?ml|sql|sh|java|c|cpp|go|rs|php|log|ini|toml)$/i;
+const readImg = f => new Promise(res => {
+  const r = new FileReader();
+  r.onload = () => { const im = new Image();
+    im.onload = () => { const k = Math.min(1, 1024 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/jpeg', .85)) };
+    im.onerror = () => res(null); im.src = r.result };
+  r.readAsDataURL(f);
+});
+const readTxt = f => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsText(f.slice(0, 200000)) });
+async function addFiles(list){
+  for(const f of list){
+    if(f.type.startsWith('image/')){ const u = await readImg(f); if(u) pending.push({name:f.name || 'image', url:u}) }
+    else if(f.type.startsWith('text/') || TXT.test(f.name)) pending.push({name:f.name, text:await readTxt(f)});
+    else alert(`Format non pris en charge : ${f.name}\nImages et fichiers texte/code uniquement.`);
+  }
+  renderAtt();
+}
+function renderAtt(){
+  const a = $('#att'); a.innerHTML = '';
+  pending.forEach((p, i) => {
+    const c = document.createElement('div'); c.className = 'chip';
+    c.innerHTML = (p.url ? `<img src="${p.url}" alt="">` : '📄') + `<span>${esc(p.name)}</span><button aria-label="Retirer">✕</button>`;
+    c.querySelector('button').onclick = () => { pending.splice(i, 1); renderAtt() };
+    a.appendChild(c);
+  });
+}
+const toApi = m => {
+  if(m.role !== 'user') return {role:m.role, content:m.content};
+  let t = m.content || '';
+  (m.files || []).forEach(f => t += `\n\n[Fichier : ${f.name}]\n\`\`\`\n${f.text}\n\`\`\``);
+  if(m.images?.length) return {role:'user', content:[{type:'text', text:t || 'Décris cette image.'}, ...m.images.map(u => ({type:'image_url', image_url:{url:u}}))]};
+  return {role:'user', content:t};
+};
+
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function md(t){
+  const blocks = [];
+  t = esc(t).replace(/```(\w*)\n?([\s\S]*?)(```|$)/g, (_, l, c) => { blocks.push(c); return `\u0000${blocks.length-1}\u0000` });
+  t = t.split(/\n{2,}/).map(p => {
+    p = p.replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/(^|\W)\*([^*\n]+)\*/g,'$1<i>$2</i>');
+    if(/^#{1,3} /.test(p)){ const n = p.match(/^#+/)[0].length; return `<h${n}>${p.replace(/^#+ /,'')}</h${n}>` }
+    if(/^\s*[-*] /.test(p)) return '<ul>' + p.split('\n').map(l => `<li>${l.replace(/^\s*[-*] /,'')}</li>`).join('') + '</ul>';
+    if(/^\s*\d+\. /.test(p)) return '<ol>' + p.split('\n').map(l => `<li>${l.replace(/^\s*\d+\. /,'')}</li>`).join('') + '</ol>';
+    return `<p>${p.replace(/\n/g,'<br>')}</p>`;
+  }).join('');
+  return t.replace(/\u0000(\d+)\u0000/g, (_, i) => `<pre><code>${blocks[i].replace(/\n$/,'')}</code></pre>`);
+}
+
+function applyTheme(){
+  const d = S.theme === 'dark' || (S.theme === 'system' && matchMedia('(prefers-color-scheme:dark)').matches);
+  document.documentElement.dataset.theme = d ? 'dark' : 'light';
+}
+const saveSet = () => store.set('jk_set', S);
+const saveChats = () => { if(!incog){ if(cur.messages.length && !chats.includes(cur)) chats.unshift(cur); store.set('jk_chats', chats) } };
+
+function newChat(){
+  if(busy) ctrl?.abort();
+  cur = {id: Date.now().toString(), title: 'Nouvelle discussion', messages: []};
+  renderList(); renderMsgs(); $('#in').focus();
+}
+
+function renderList(){
+  const l = $('#list'); l.innerHTML = chats.length ? '<div class="gl">Récentes</div>' : '';
+  chats.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'ci' + (c === cur ? ' on' : '');
+    d.innerHTML = `<span>${esc(c.title)}</span><button title="Supprimer" aria-label="Supprimer">🗑</button>`;
+    d.onclick = () => { if(busy) ctrl?.abort(); setIncog(false, true); cur = c; renderList(); renderMsgs(); if(innerWidth < 760) $('#side').classList.add('off') };
+    d.querySelector('button').onclick = e => {
+      e.stopPropagation(); chats = chats.filter(x => x !== c); store.set('jk_chats', chats);
+      if(cur === c) newChat(); else renderList();
+    };
+    l.appendChild(d);
+  });
+}
+
+function msgEl(m, i, last){
+  const d = document.createElement('div');
+  d.className = 'm ' + (m.role === 'user' ? 'u' : 'a');
+  if(m.role === 'user'){
+    d.innerHTML = `<div class="b">${(m.images||[]).map(u => `<img class="th" src="${u}" alt="Image jointe">`).join('')}${(m.files||[]).map(f => `<div class="fc">📄 ${esc(f.name)}</div>`).join('')}${esc(m.content)}</div>`;
+    return d;
+  }
+  d.innerHTML = `<div class="b"><div class="txt">${md(m.content)}</div><div class="act"><button data-a="copy">Copier</button>${last ? '<button data-a="regen">Régénérer</button>' : ''}</div></div>`;
+  d.querySelector('[data-a=copy]').onclick = e => { navigator.clipboard?.writeText(m.content); e.target.textContent = 'Copié ✓'; setTimeout(() => e.target.textContent = 'Copier', 1500) };
+  d.querySelector('[data-a=regen]')?.addEventListener('click', regen);
+  return d;
+}
+
+function renderMsgs(){
+  const w = $('#wrap'); w.innerHTML = '';
+  if(!cur.messages.length){
+    w.innerHTML = `<div class="hero"><h1>Comment puis-je t'aider ?</h1><div class="sug"></div></div>`;
+    ['Explique-moi un concept simple','Aide-moi à écrire un e-mail','Donne-moi des idées de projet','Corrige mon code'].forEach(t => {
+      const b = document.createElement('button'); b.textContent = t; b.onclick = () => { $('#in').value = t; send() };
+      w.querySelector('.sug').appendChild(b);
+    });
+    return;
+  }
+  cur.messages.forEach((m, i) => w.appendChild(msgEl(m, i, i === cur.messages.length - 1)));
+  $('#msgs').scrollTop = $('#msgs').scrollHeight;
+}
+
+function setIncog(v, silent){
+  if(v === incog) return;
+  incog = v;
+  $('#inc').classList.toggle('on-i', v); $('#incb').hidden = !v;
+  if(!silent) newChat();
+}
+
+function setBusy(b){ busy = b; $('#go').textContent = b ? '■' : '↑'; $('#go').disabled = false }
+
+async function stream(){
+  const w = $('#wrap');
+  const m = {role:'assistant', content:''};
+  cur.messages.push(m); renderMsgs();
+  const el = w.lastElementChild.querySelector('.txt'); el.classList.add('cur');
+  const box = $('#msgs');
+  setBusy(true); ctrl = new AbortController();
+  const payload = {
+    model: S.model || CONFIG.MODEL, stream: true, temperature: +S.temp,
+    messages: [{role:'system', content:S.system}, ...cur.messages.slice(0, -1).map(toApi)]
+  };
+  try{
+    const r = await fetch(CONFIG.ENDPOINT, {
+      method:'POST', signal: ctrl.signal,
+      headers:{'Content-Type':'application/json','Authorization':'Bearer ' + CONFIG.API_KEY},
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok) throw new Error(`Erreur ${r.status} : ${(await r.text()).slice(0,300)}`);
+    if((r.headers.get('content-type') || '').includes('json')){
+      const j = await r.json(); m.content = j.choices?.[0]?.message?.content || '';
+      el.innerHTML = md(m.content);
+    }else{
+      const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
+      for(;;){
+        const {done, value} = await rd.read(); if(done) break;
+        buf += dec.decode(value, {stream:true});
+        const lines = buf.split('\n'); buf = lines.pop();
+        for(const ln of lines){
+          const s = ln.trim(); if(!s.startsWith('data:')) continue;
+          const d = s.slice(5).trim(); if(d === '[DONE]') continue;
+          try{ m.content += JSON.parse(d).choices?.[0]?.delta?.content || '' }catch{}
+        }
+        el.innerHTML = md(m.content); box.scrollTop = box.scrollHeight;
+      }
+    }
+  }catch(e){
+    if(e.name !== 'AbortError'){ m.content += (m.content ? '\n\n' : '') + '⚠️ ' + e.message }
+  }
+  if(!m.content) cur.messages.pop();
+  setBusy(false); ctrl = null; saveChats(); renderList(); renderMsgs();
+}
+
+function send(){
+  if(busy){ ctrl?.abort(); return }
+  const t = $('#in').value.trim(); if(!t && !pending.length) return;
+  $('#in').value = ''; $('#in').style.height = 'auto';
+  if(!cur.messages.length) cur.title = (t || pending[0].name).slice(0, 40);
+  cur.messages.push({role:'user', content:t, images:pending.filter(p => p.url).map(p => p.url), files:pending.filter(p => p.text != null).map(p => ({name:p.name, text:p.text}))});
+  pending = []; renderAtt();
+  saveChats(); renderList(); stream();
+}
+function regen(){ if(busy) return; if(cur.messages.at(-1)?.role === 'assistant') cur.messages.pop(); stream() }
+
+/* Événements */
+$('#go').onclick = send;
+$('#clip').onclick = () => $('#file').click();
+$('#file').onchange = e => { addFiles([...e.target.files]); e.target.value = '' };
+$('#in').addEventListener('paste', e => { const f = [...e.clipboardData.files]; if(f.length){ e.preventDefault(); addFiles(f) } });
+addEventListener('dragover', e => { e.preventDefault(); $('#comp').classList.add('drop') });
+addEventListener('dragleave', e => { if(!e.relatedTarget) $('#comp').classList.remove('drop') });
+addEventListener('drop', e => { e.preventDefault(); $('#comp').classList.remove('drop'); addFiles([...e.dataTransfer.files]) });
+$('#in').addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); send() } });
+$('#in').addEventListener('input', e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' });
+$('#new').onclick = () => { setIncog(false, true); newChat() };
+$('#tog').onclick = () => $('#side').classList.toggle('off');
+$('#inc').onclick = () => setIncog(!incog);
+$('#thm').onclick = () => { S.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; saveSet(); applyTheme() };
+$('#setb').onclick = () => {
+  $('#s-th').value = S.theme; $('#s-md').value = S.model; $('#s-sys').value = S.system;
+  $('#s-t').value = S.temp; $('#tv').textContent = S.temp; $('#ov').classList.add('on');
+};
+$('#s-t').oninput = e => $('#tv').textContent = e.target.value;
+$('#cx').onclick = () => $('#ov').classList.remove('on');
+$('#ov').onclick = e => { if(e.target.id === 'ov') $('#ov').classList.remove('on') };
+$('#ok').onclick = () => {
+  S = {theme:$('#s-th').value, model:$('#s-md').value.trim(), system:$('#s-sys').value, temp:$('#s-t').value};
+  saveSet(); applyTheme(); $('#ov').classList.remove('on');
+};
+$('#exp').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(chats, null, 2)], {type:'application/json'}));
+  a.download = 'jees-ai-historique.json'; a.click();
+};
+$('#clr').onclick = () => {
+  if(!confirm('Supprimer tout l\'historique ?')) return;
+  chats = []; store.set('jk_chats', chats); $('#ov').classList.remove('on'); newChat();
+};
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change', applyTheme);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') $('#ov').classList.remove('on') });
+
+applyTheme();
+if(innerWidth < 760) $('#side').classList.add('off');
+newChat();
+</script>
+</body>
+</html>
