@@ -82,6 +82,15 @@ textarea{flex:1;background:none;border:0;color:inherit;font:inherit;resize:none;
 .row button{border:1px solid var(--bd);padding:8px 12px;font-size:14px}
 .row .pr{background:var(--acc);color:var(--accT);border-color:var(--acc)}
 .row .dg{color:#e5484d}
+.dlg input[type=radio],.dlg input[type=checkbox]{width:auto}
+.prow{border:1px solid var(--bd);border-radius:10px;padding:10px;margin-top:10px}
+.prow .ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.prow .ph input.pn{flex:1;font-weight:600;background:none;border:0;border-bottom:1px solid var(--bd);border-radius:0;padding:4px 2px}
+.prow .ph button{margin-left:auto;color:#e5484d;padding:2px 8px}
+.prow .pf{display:grid;gap:6px}
+.fbrow{display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer;font-size:14px}
+.addp{border:1px solid var(--bd);padding:8px 12px;font-size:13px;margin-top:10px;width:100%}
+.addp:hover{background:var(--hov)}
 @media(max-width:760px){#side{position:fixed;inset:0 auto 0 0;z-index:5;box-shadow:2px 0 12px rgba(0,0,0,.3)}#side.off{margin-left:-270px}}
 @media(max-width:760px){#scrim.on{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:4}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -108,7 +117,7 @@ textarea{flex:1;background:none;border:0;color:inherit;font:inherit;resize:none;
     <div id="att"></div>
     <div class="box">
       <button class="clip" id="clip" aria-label="Joindre un fichier" title="Joindre images, code, texte">📎</button>
-      <input type="file" id="file" multiple hidden accept="image/*,.txt,.md,.csv,.json,.js,.ts,.jsx,.tsx,.py,.html,.css,.xml,.yml,.yaml,.sql,.sh,.java,.c,.cpp,.go,.rs,.php,.log,.ini,.toml">
+      <input type="file" id="file" multiple hidden accept="image/*,.pdf,.doc,.docx,.txt,.md,.csv,.json,.js,.ts,.jsx,.tsx,.py,.html,.css,.xml,.yml,.yaml,.sql,.sh,.java,.c,.cpp,.go,.rs,.php,.log,.ini,.toml">
       <textarea id="in" rows="1" placeholder="Écris ton message à Jee's AI…"></textarea>
       <button id="go" aria-label="Envoyer">↑</button>
     </div>
@@ -120,8 +129,10 @@ textarea{flex:1;background:none;border:0;color:inherit;font:inherit;resize:none;
   <h2>Paramètres</h2>
   <label for="s-th">Thème</label>
   <select id="s-th"><option value="system">Système</option><option value="light">Clair</option><option value="dark">Sombre</option></select>
-  <label for="s-md">Modèle (laisser vide = celui du code)</label>
-  <input id="s-md" placeholder="ex : qwen2.5:14b">
+  <label>Serveurs</label>
+  <div id="profs"></div>
+  <button type="button" class="addp" id="addp">+ Ajouter un serveur</button>
+  <label class="fbrow"><input type="checkbox" id="s-fb"> Basculer automatiquement sur le suivant en cas d'échec</label>
   <label for="s-sys">Instructions système</label>
   <textarea id="s-sys"></textarea>
   <label for="s-t">Température : <span id="tv"></span></label>
@@ -136,10 +147,10 @@ textarea{flex:1;background:none;border:0;color:inherit;font:inherit;resize:none;
 <script>
 /* ============ CONFIGURATION : mets ton endpoint et ta clé ici ============ */
 const CONFIG = {
-  ENDPOINT: "https://wobble-smilingly-onward.ngrok-free.dev/v1/chat/completions", // Ollama (API type OpenAI) ou ton tunnel https
+  ENDPOINT: "http://localhost:11434/v1/chat/completions", // Ollama (API type OpenAI) ou ton tunnel https
   API_KEY:  "ollama",            // Ollama accepte n'importe quelle valeur ; mets ta vraie clé si besoin
-  MODEL:    "orcarouter-qwen3.8-27b-uncensored-64k",
-  VISION:   true                // true seulement si ton modèle comprend les images (ex : qwen2.5vl)
+  MODEL:    "richardyoung-qwen2.5-14b-instruct-abliterated-latest-64k",
+  VISION:   false                // true seulement si ton modèle comprend les images (ex : qwen2.5vl)
 };
 /* ======================================================================== */
 
@@ -149,8 +160,15 @@ const store = {
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
 };
 let chats = store.get('jk_chats', []);
-let S = Object.assign({theme:'system', system:'Tu es Jee\'s AI, un assistant utile et concis. Réponds dans la langue de l\'utilisateur.', temp:0.7, model:''}, store.get('jk_set', {}));
+let S = Object.assign({theme:'system', profiles:[], active:null, fallback:false, system:'Tu es Jee\'s AI, un assistant utile et concis. Réponds dans la langue de l\'utilisateur.', temp:0.7}, store.get('jk_set', {}));
 let cur, incog = false, ctrl = null, busy = false, pending = [];
+function candidates(){
+  const base = {id:null, name:'Par défaut', endpoint:'', key:'', model:''};
+  const all = [base, ...S.profiles];
+  let i = all.findIndex(p => p.id === S.active); if(i < 0) i = 0;
+  return [all[i], ...all.filter((_, k) => k !== i)];
+}
+const effFor = p => ({ name: p.name || 'Par défaut', ep: (p.endpoint||'').trim() || CONFIG.ENDPOINT, key: (p.key||'').trim() || CONFIG.API_KEY, model: (p.model||'').trim() || CONFIG.MODEL });
 const TXT = /\.(txt|md|csv|json|js|ts|jsx|tsx|py|html|css|xml|ya?ml|sql|sh|java|c|cpp|go|rs|php|log|ini|toml)$/i;
 const readImg = f => new Promise(res => {
   const r = new FileReader();
@@ -163,12 +181,48 @@ const readImg = f => new Promise(res => {
   r.readAsDataURL(f);
 });
 const readTxt = f => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsText(f.slice(0, 200000)) });
+const loaded = {};
+function loadScript(src){
+  if(loaded[src]) return loaded[src];
+  return loaded[src] = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('chargement impossible : ' + src));
+    document.head.appendChild(s);
+  });
+}
+async function extractPdf(f){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const doc = await window.pdfjsLib.getDocument({data: await f.arrayBuffer()}).promise;
+  let t = '';
+  for(let i = 1; i <= doc.numPages; i++){
+    const c = await (await doc.getPage(i)).getTextContent();
+    t += c.items.map(x => x.str).join(' ') + '\n\n';
+  }
+  t = t.trim();
+  if(!t) throw new Error('Aucun texte trouvé (probablement un PDF scanné/image).');
+  return t.slice(0, 200000);
+}
+async function extractDocx(f){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+  const r = await window.mammoth.extractRawText({arrayBuffer: await f.arrayBuffer()});
+  const t = r.value.trim();
+  if(!t) throw new Error('Aucun texte trouvé dans ce document.');
+  return t.slice(0, 200000);
+}
 async function addFiles(list){
   for(const f of list){
-    if(f.type.startsWith('image/') && !CONFIG.VISION && !S.model){ alert('Ce modèle ne comprend pas les images. Joins un fichier texte/code, ou active VISION dans le code avec un modèle vision.'); continue }
-    if(f.type.startsWith('image/')){ const u = await readImg(f); if(u) pending.push({name:f.name || 'image', url:u}) }
-    else if(f.type.startsWith('text/') || TXT.test(f.name)) pending.push({name:f.name, text:await readTxt(f)});
-    else alert(`Format non pris en charge : ${f.name}\nImages et fichiers texte/code uniquement.`);
+    const n = f.name.toLowerCase();
+    try{
+      if(f.type.startsWith('image/') && !CONFIG.VISION && !effFor(candidates()[0]).model){ alert('Ce modèle ne comprend pas les images. Joins un fichier texte/code, ou active VISION dans le code avec un modèle vision.'); continue }
+      if(f.type.startsWith('image/')){ const u = await readImg(f); if(u) pending.push({name:f.name || 'image', url:u}); continue }
+      if(n.endsWith('.pdf')){ pending.push({name:f.name, text: await extractPdf(f)}); continue }
+      if(n.endsWith('.docx')){ pending.push({name:f.name, text: await extractDocx(f)}); continue }
+      if(n.endsWith('.doc')){ throw new Error("Le format .doc (Word 97-2003) n'est pas lisible ici. Enregistre le fichier en .docx et réessaie.") }
+      if(f.type.startsWith('text/') || TXT.test(f.name)){ pending.push({name:f.name, text:await readTxt(f)}); continue }
+      alert(`Format non pris en charge : ${f.name}`);
+    }catch(e){
+      alert(`Impossible de lire ${f.name} : ${e.message}`);
+    }
   }
   renderAtt();
 }
@@ -299,17 +353,30 @@ async function stream(){
   const root = w.lastElementChild; root.querySelector('.txt').classList.add('cur'); m.t0 = Date.now();
   const box = $('#msgs');
   setBusy(true); ctrl = new AbortController();
-  const payload = {
-    model: S.model || CONFIG.MODEL, stream: true, temperature: +S.temp,
-    messages: [{role:'system', content:S.system}, ...cur.messages.slice(0, -1).map(toApi)]
-  };
+  const chain = S.fallback ? candidates() : [candidates()[0]];
+  const msgs = [{role:'system', content:S.system}, ...cur.messages.slice(0, -1).map(toApi)];
+  let r = null, failed = [];
+  for(const prof of chain){
+    if(ctrl.signal.aborted) break;
+    const E = effFor(prof);
+    try{
+      const rr = await fetch(E.ep, {
+        method:'POST', signal: ctrl.signal,
+        headers:{'Content-Type':'application/json','Authorization':'Bearer ' + E.key},
+        body: JSON.stringify({model: E.model, stream: true, temperature: +S.temp, messages: msgs})
+      });
+      if(!rr.ok) throw new Error(`${rr.status} : ${(await rr.text()).slice(0,200)}`);
+      r = rr; break;
+    }catch(e){
+      if(e.name === 'AbortError') break;
+      failed.push(`${E.name} — ${e.message}`);
+    }
+  }
   try{
-    const r = await fetch(CONFIG.ENDPOINT, {
-      method:'POST', signal: ctrl.signal,
-      headers:{'Content-Type':'application/json','Authorization':'Bearer ' + CONFIG.API_KEY},
-      body: JSON.stringify(payload)
-    });
-    if(!r.ok) throw new Error(`Erreur ${r.status} : ${(await r.text()).slice(0,300)}`);
+    if(!r){
+      if(ctrl.signal.aborted) throw {name:'AbortError'};
+      throw new Error('Tous les serveurs ont échoué :\n' + failed.join('\n'));
+    }
     if((r.headers.get('content-type') || '').includes('json')){
       const j = (await r.json()).choices?.[0]?.message || {};
       m.content = j.content || ''; m.reasoning = j.reasoning_content || j.reasoning || '';
@@ -362,15 +429,41 @@ $('#scrim').onclick = () => setSide(false);
 $('#tog').onclick = () => setSide($('#side').classList.contains('off'));
 $('#inc').onclick = () => setIncog(!incog);
 $('#thm').onclick = () => { S.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; saveSet(); applyTheme() };
+let draftProfiles = [], draftActive = null;
+function renderProfs(){
+  const c = $('#profs'); c.innerHTML = '';
+  const base = document.createElement('div'); base.className = 'prow';
+  base.innerHTML = `<div class="ph"><input type="radio" name="actp" ${draftActive === null ? 'checked' : ''}><input class="pn" value="Par défaut (valeurs du code)" disabled></div>`;
+  base.querySelector('[type=radio]').onclick = () => draftActive = null;
+  c.appendChild(base);
+  draftProfiles.forEach(p => {
+    const d = document.createElement('div'); d.className = 'prow'; d.dataset.id = p.id;
+    d.innerHTML = `<div class="ph"><input type="radio" name="actp" ${p.id === draftActive ? 'checked' : ''}><input class="pn" placeholder="Nom (ex : Kaggle)" value="${esc(p.name)}"><button type="button" aria-label="Supprimer">✕</button></div><div class="pf"><input class="pep" placeholder="Endpoint (vide = celui du code)" value="${esc(p.endpoint)}"><input class="pky" type="password" placeholder="Clé (vide = celle du code)" value="${esc(p.key)}"><input class="pmd" placeholder="Modèle (vide = celui du code)" value="${esc(p.model)}"></div>`;
+    d.querySelector('[type=radio]').onclick = () => draftActive = p.id;
+    d.querySelector('button').onclick = () => { draftProfiles = draftProfiles.filter(x => x !== p); if(draftActive === p.id) draftActive = null; renderProfs() };
+    c.appendChild(d);
+  });
+}
+$('#addp').onclick = () => {
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  draftProfiles.push({id, name:'', endpoint:'', key:'', model:''}); draftActive = id; renderProfs();
+};
 $('#setb').onclick = () => { if(innerWidth < 760) setSide(false);
-  $('#s-th').value = S.theme; $('#s-md').value = S.model; $('#s-sys').value = S.system;
+  $('#s-th').value = S.theme; $('#s-sys').value = S.system; $('#s-fb').checked = S.fallback;
+  draftProfiles = S.profiles.map(p => ({...p})); draftActive = S.active; renderProfs();
   $('#s-t').value = S.temp; $('#tv').textContent = S.temp; $('#ov').classList.add('on');
 };
 $('#s-t').oninput = e => $('#tv').textContent = e.target.value;
 $('#cx').onclick = () => $('#ov').classList.remove('on');
 $('#ov').onclick = e => { if(e.target.id === 'ov') $('#ov').classList.remove('on') };
 $('#ok').onclick = () => {
-  S = {theme:$('#s-th').value, model:$('#s-md').value.trim(), system:$('#s-sys').value, temp:$('#s-t').value};
+  const profiles = [...document.querySelectorAll('#profs .prow[data-id]')].map(d => ({
+    id: d.dataset.id, name: d.querySelector('.pn').value.trim(), endpoint: d.querySelector('.pep').value.trim(),
+    key: d.querySelector('.pky').value.trim(), model: d.querySelector('.pmd').value.trim()
+  }));
+  const ar = document.querySelector('#profs input[name=actp]:checked');
+  const active = ar?.closest('.prow[data-id]')?.dataset.id || null;
+  S = {theme:$('#s-th').value, profiles, active, fallback:$('#s-fb').checked, system:$('#s-sys').value, temp:$('#s-t').value};
   saveSet(); applyTheme(); $('#ov').classList.remove('on');
 };
 $('#exp').onclick = () => {
